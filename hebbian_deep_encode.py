@@ -16,7 +16,7 @@ ROWS = 10
 GRID_K = 5
 EPOCHS = 5
 
-# === Hebbian Encoder Layer ===
+# === Hebbian Encoder Layer with Normalization and Inhibition ===
 class HebbianEncoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels, spatial):
         super().__init__()
@@ -27,6 +27,7 @@ class HebbianEncoder(torch.nn.Module):
 
     def forward(self, x, step=None):
         act = F.relu(self.encode(x))
+        act = act / (act.norm(dim=(2, 3), keepdim=True) + 1e-6)  # normalize activations
         B, C, H, W = act.shape
         act_flat = act.view(B, C, -1)
 
@@ -37,12 +38,14 @@ class HebbianEncoder(torch.nn.Module):
             self.lateral_weights.data.clamp_(-1.0, 1.0)
 
         lateral = torch.einsum("bci,cij->bcj", act_flat, self.lateral_weights)
-        act += lateral.view(B, C, H, W)
+        lateral = lateral.view(B, C, H, W)
+        lateral = lateral - lateral.mean(dim=(2, 3), keepdim=True)  # inhibition
+        act += lateral
 
         if step is not None:
             print(f"[LOG] Step {step}: energy={act.pow(2).mean():.4f}, delta={delta.abs().mean():.6f}, norm={self.lateral_weights.data.norm():.4f}")
 
-        return act.detach()
+        return act
 
 # === Deep Hebbian Network ===
 class MultiLayerHebbian(torch.nn.Module):
@@ -55,8 +58,7 @@ class MultiLayerHebbian(torch.nn.Module):
     def forward(self, x, step=None):
         for i, layer in enumerate(self.layers):
             x = layer(x, step=step if i == len(self.layers) - 1 else None)
-        B, C, H, W = x.shape
-        return x.view(B, -1)
+        return x.view(x.size(0), -1).detach()
 
 # === Load Dataset ===
 def load_dataset():
@@ -80,8 +82,7 @@ def build_neighbor_grid(dataset, similarity, ref_indices, k=5):
     for idx in ref_indices:
         row = [all_imgs[idx]]
         topk = similarity[idx].argsort()[::-1][1:k + 1]
-        topk = [i for i in topk if i < len(all_imgs)]
-        row += [all_imgs[i] for i in topk]
+        row += [all_imgs[i] for i in topk if i < len(all_imgs)]
         grid.append(row)
 
     grid_w = SPRITE_SIZE[0] * (k + 1)
@@ -112,7 +113,7 @@ if __name__ == "__main__":
         for step, (batch, _) in enumerate(dataloader):
             z = model(batch, step=step) if epoch == EPOCHS - 1 else model(batch)
             if epoch == EPOCHS - 1:
-                all_features.append(z)
+                all_features.append(z.detach())
 
     features = torch.cat(all_features, dim=0)
     sim = cosine_similarity_matrix(features)

@@ -8,15 +8,15 @@ from load_spritesheet import load_spritesheet
 from torchvision import transforms
 
 # === Config ===
-SPRITE_PATH = "data/categories.png"
+SPRITE_PATH = "data/pokemon_all.png"
 SPRITE_SIZE = (64, 64)
-TILE_SIZE = (64, 64)
-NUM_SPRITES = 60
+TILE_SIZE = (96, 96)
+NUM_SPRITES = 151
 BATCH_SIZE = 8
-NUM_IMAGES = 60
+NUM_IMAGES = 100
 ROWS = 10
 GRID_K = 5
-EPOCHS = 100
+EPOCHS = 500
 
 # === Hebbian Encoder Layer ===
 class HebbianEncoder(torch.nn.Module):
@@ -88,8 +88,8 @@ def build_neighbor_grid(images, similarity, ref_indices, k=5):
             pil = transforms.ToPILImage()(img)
             canvas.paste(pil, (x * SPRITE_SIZE[0], y * SPRITE_SIZE[1]))
 
-    canvas.save("categories_hebbian_deep_encode_neighbors_grid.png")
-    print("[SAVED] categories_hebbian_deep_encode_neighbors_grid.png")
+    canvas.save("pokemon_hebbian_deep_encode_neighbors_grid.png")
+    print("[SAVED] pokemon_hebbian_deep_encode_neighbors_grid.png")
 
 if __name__ == "__main__":
     sprites = load_spritesheet(SPRITE_PATH, sprite_size=SPRITE_SIZE, tile_size=TILE_SIZE, max_sprites=NUM_SPRITES)[:, :3, :, :]  # RGBA -> RGB
@@ -107,21 +107,23 @@ if __name__ == "__main__":
     all_features = []
     for epoch in range(EPOCHS):
         for step, (batch,) in enumerate(dataloader):
-            z = model(batch, step=step)
             if epoch == EPOCHS - 1:
+                z = model(batch, step=step)
                 all_features.append(z)
+            else:
+                model(batch)
 
     features = torch.cat(all_features, dim=0)
 
     sim = cosine_similarity_matrix(features)
-    np.save("categories_hebbian_deep_encode_similarity.npy", sim)
+    np.save("pokemon_hebbian_deep_encode_similarity.npy", sim)
     plt.figure(figsize=(8, 8))
     plt.imshow(sim, cmap="magma")
     plt.title("Hebbian Deep Cosine Similarity")
     plt.colorbar()
     plt.tight_layout()
-    plt.savefig("categories_hebbian_deep_encode_similarity.png")
-    print("[SAVED] categories_hebbian_deep_encode_similarity.png")
+    plt.savefig("pokemon_hebbian_deep_encode_similarity.png")
+    print("[SAVED] pokemon_hebbian_deep_encode_similarity.png")
 
     step = len(sprites) // ROWS
     refs = [i * step for i in range(ROWS)]

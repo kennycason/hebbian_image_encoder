@@ -10,7 +10,6 @@ from torchvision import transforms
 # === Config ===
 SPRITE_PATH = "data/categories.png"
 SPRITE_SIZE = (64, 64)
-TILE_SIZE = (64, 64)
 NUM_SPRITES = 60
 BATCH_SIZE = 8
 NUM_IMAGES = 60
@@ -29,7 +28,6 @@ class HebbianEncoder(torch.nn.Module):
 
     def forward(self, x, step=None):
         act = F.relu(self.encode(x))
-        act = act / (act.norm(dim=(2,3), keepdim=True) + 1e-6)  # normalization to prevent runaway growth
         B, C, H, W = act.shape
         act_flat = act.view(B, C, -1)
 
@@ -40,9 +38,7 @@ class HebbianEncoder(torch.nn.Module):
             self.lateral_weights.data.clamp_(-1.0, 1.0)
 
         lateral = torch.einsum('bci,cij->bcj', act_flat, self.lateral_weights)
-        lateral = lateral.view(B, C, H, W)
-        lateral = lateral - lateral.mean(dim=(2, 3), keepdim=True)  # spatial inhibition
-        act += lateral
+        act += lateral.view(B, C, H, W)
 
         if step is not None:
             act_energy = act.pow(2).mean().item()
@@ -50,7 +46,7 @@ class HebbianEncoder(torch.nn.Module):
             weight_norm = self.lateral_weights.data.norm().item()
             print(f"[LOG] Step {step}: energy={act_energy:.4f}, delta={delta_magnitude:.6f}, norm={weight_norm:.4f}")
 
-        return act  # return full shape
+        return act  # ← Keep full shape!
 
 class MultiLayerHebbian(torch.nn.Module):
     def __init__(self, layer_shapes):
@@ -92,7 +88,7 @@ def build_neighbor_grid(images, similarity, ref_indices, k=5):
     print("[SAVED] categories_hebbian_deep_encode_neighbors_grid.png")
 
 if __name__ == "__main__":
-    sprites = load_spritesheet(SPRITE_PATH, sprite_size=SPRITE_SIZE, tile_size=TILE_SIZE, max_sprites=NUM_SPRITES)[:, :3, :, :]  # RGBA -> RGB
+    sprites = load_spritesheet(SPRITE_PATH, sprite_size=SPRITE_SIZE, tile_size=SPRITE_SIZE, max_sprites=NUM_SPRITES)[:, :3, :, :] # RGBA -> RGB
     sprites = sprites[:NUM_IMAGES]
     dataset = TensorDataset(sprites)
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False)
