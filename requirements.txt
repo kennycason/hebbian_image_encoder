@@ -1,0 +1,10 @@
+accelerate
+datasets
+diffusers
+matplotlib
+numpy
+pillow
+seaborn
+torch
+torchvision
+transformers
