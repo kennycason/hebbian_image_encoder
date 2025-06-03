@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 
 # === Config ===
-IMAGE_DIR = "tiny_imagenet/train"
+IMAGE_DIR = "data/tiny_imagenet/train"
 SPRITE_SIZE = (64, 64)
 BATCH_SIZE = 8
 NUM_IMAGES = 1000

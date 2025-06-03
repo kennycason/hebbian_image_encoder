@@ -1,15 +1,14 @@
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
-import torch.nn.functional as F
+from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
-import os
 
 # === Config ===
-IMAGE_DIR = "tiny_imagenet/train"
+IMAGE_DIR = "data/tiny_imagenet/train"
 SPRITE_SIZE = (64, 64)
 BATCH_SIZE = 8
 NUM_IMAGES = 1000
@@ -32,36 +31,32 @@ class HebbianEncoder(torch.nn.Module):
         act_flat = act.view(B, C, -1)
 
         with torch.no_grad():
-            hebbian = torch.einsum('bni,bnj->nij', act_flat, act_flat)
+            hebbian = torch.einsum("bni,bnj->nij", act_flat, act_flat)
             delta = 0.001 * hebbian.mean(dim=0)
             self.lateral_weights.data += delta
             self.lateral_weights.data.clamp_(-1.0, 1.0)
 
-        lateral = torch.einsum('bci,cij->bcj', act_flat, self.lateral_weights)
+        lateral = torch.einsum("bci,cij->bcj", act_flat, self.lateral_weights)
         act += lateral.view(B, C, H, W)
 
         if step is not None:
-            act_energy = act.pow(2).mean().item()
-            delta_magnitude = delta.abs().mean().item()
-            weight_norm = self.lateral_weights.data.norm().item()
-            print(f"[LOG] Step {step}: energy={act_energy:.4f}, delta={delta_magnitude:.6f}, norm={weight_norm:.4f}")
+            print(f"[LOG] Step {step}: energy={act.pow(2).mean():.4f}, delta={delta.abs().mean():.6f}, norm={self.lateral_weights.data.norm():.4f}")
 
-        return act
+        return act.detach()
 
-# === Multi-Layer Hebbian Encoder ===
+# === Deep Hebbian Network ===
 class MultiLayerHebbian(torch.nn.Module):
     def __init__(self, layer_shapes):
         super().__init__()
         self.layers = torch.nn.ModuleList([
-            HebbianEncoder(in_c, out_c, spatial)
-            for (in_c, out_c, spatial) in layer_shapes
+            HebbianEncoder(in_c, out_c, spatial) for (in_c, out_c, spatial) in layer_shapes
         ])
 
     def forward(self, x, step=None):
         for i, layer in enumerate(self.layers):
             x = layer(x, step=step if i == len(self.layers) - 1 else None)
         B, C, H, W = x.shape
-        return x.view(B, -1).detach()
+        return x.view(B, -1)
 
 # === Load Dataset ===
 def load_dataset():
@@ -73,12 +68,12 @@ def load_dataset():
     subset = torch.utils.data.Subset(dataset, list(range(min(NUM_IMAGES, len(dataset)))))
     return subset, DataLoader(subset, batch_size=BATCH_SIZE, shuffle=False)
 
-# === Cosine Similarity Matrix ===
+# === Cosine Similarity ===
 def cosine_similarity_matrix(features):
     norm = features / features.norm(dim=1, keepdim=True)
     return torch.mm(norm, norm.T).cpu().numpy()
 
-# === Image Grid ===
+# === Grid Builder ===
 def build_neighbor_grid(dataset, similarity, ref_indices, k=5):
     all_imgs = [img for img, _ in dataset]
     grid = []
@@ -105,26 +100,24 @@ def build_neighbor_grid(dataset, similarity, ref_indices, k=5):
 if __name__ == "__main__":
     dataset, dataloader = load_dataset()
 
-    model = MultiLayerHebbian(layer_shapes=[
+    model = MultiLayerHebbian([
         (3, 16, (32, 32)),
         (16, 32, (16, 16)),
-        (32, 64, (8, 8))
+        (32, 64, (8, 8)),
+        (64, 128, (4, 4))
     ])
 
     all_features = []
     for epoch in range(EPOCHS):
-        if epoch == EPOCHS - 1:
-            for step, (batch, _) in enumerate(dataloader):
-                z = model(batch, step=step)
+        for step, (batch, _) in enumerate(dataloader):
+            z = model(batch, step=step) if epoch == EPOCHS - 1 else model(batch)
+            if epoch == EPOCHS - 1:
                 all_features.append(z)
-        else:
-            for step, (batch, _) in enumerate(dataloader):
-                model(batch)
 
     features = torch.cat(all_features, dim=0)
-
     sim = cosine_similarity_matrix(features)
     np.save("hebbian_deep_encode_similarity.npy", sim)
+
     plt.figure(figsize=(8, 8))
     plt.imshow(sim, cmap="magma")
     plt.title("Hebbian Deep Cosine Similarity")

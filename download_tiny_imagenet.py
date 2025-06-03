@@ -7,7 +7,7 @@ import argparse
 import shutil
 
 # === Config ===
-SAVE_DIR = Path("tiny_imagenet")
+SAVE_DIR = Path("data/tiny_imagenet")
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 
