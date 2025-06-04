@@ -8,11 +8,12 @@ from load_spritesheet import load_spritesheet
 from torchvision import transforms
 
 # === Config ===
-SPRITE_PATH = "data/categories.png"
+SPRITE_PATH = "../data/pokemon_all.png"
 SPRITE_SIZE = (64, 64)
-NUM_SPRITES = 60
+TILE_SIZE = (96, 96)
+NUM_SPRITES = 151
 BATCH_SIZE = 8
-NUM_IMAGES = 60
+NUM_IMAGES = 100
 ROWS = 10
 GRID_K = 5
 EPOCHS = 100
@@ -28,6 +29,7 @@ class HebbianEncoder(torch.nn.Module):
 
     def forward(self, x, step=None):
         act = F.relu(self.encode(x))
+        act = act / (act.norm(dim=(2,3), keepdim=True) + 1e-6)  # normalization to prevent runaway growth
         B, C, H, W = act.shape
         act_flat = act.view(B, C, -1)
 
@@ -38,7 +40,9 @@ class HebbianEncoder(torch.nn.Module):
             self.lateral_weights.data.clamp_(-1.0, 1.0)
 
         lateral = torch.einsum('bci,cij->bcj', act_flat, self.lateral_weights)
-        act += lateral.view(B, C, H, W)
+        lateral = lateral.view(B, C, H, W)
+        lateral = lateral - lateral.mean(dim=(2, 3), keepdim=True)  # spatial inhibition
+        act += lateral
 
         if step is not None:
             act_energy = act.pow(2).mean().item()
@@ -46,7 +50,7 @@ class HebbianEncoder(torch.nn.Module):
             weight_norm = self.lateral_weights.data.norm().item()
             print(f"[LOG] Step {step}: energy={act_energy:.4f}, delta={delta_magnitude:.6f}, norm={weight_norm:.4f}")
 
-        return act  # ← Keep full shape!
+        return act  # return full shape
 
 class MultiLayerHebbian(torch.nn.Module):
     def __init__(self, layer_shapes):
@@ -84,11 +88,11 @@ def build_neighbor_grid(images, similarity, ref_indices, k=5):
             pil = transforms.ToPILImage()(img)
             canvas.paste(pil, (x * SPRITE_SIZE[0], y * SPRITE_SIZE[1]))
 
-    canvas.save("categories_hebbian_deep_encode_neighbors_grid.png")
-    print("[SAVED] categories_hebbian_deep_encode_neighbors_grid.png")
+    canvas.save("pokemon_hebbian_deep_encode_neighbors_grid.png")
+    print("[SAVED] pokemon_hebbian_deep_encode_neighbors_grid.png")
 
 if __name__ == "__main__":
-    sprites = load_spritesheet(SPRITE_PATH, sprite_size=SPRITE_SIZE, tile_size=SPRITE_SIZE, max_sprites=NUM_SPRITES)[:, :3, :, :] # RGBA -> RGB
+    sprites = load_spritesheet(SPRITE_PATH, sprite_size=SPRITE_SIZE, tile_size=TILE_SIZE, max_sprites=NUM_SPRITES)[:, :3, :, :]  # RGBA -> RGB
     sprites = sprites[:NUM_IMAGES]
     dataset = TensorDataset(sprites)
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False)
@@ -105,19 +109,19 @@ if __name__ == "__main__":
         for step, (batch,) in enumerate(dataloader):
             z = model(batch, step=step)
             if epoch == EPOCHS - 1:
-                all_features.append(z)
+                all_features.append(z.detach())
 
     features = torch.cat(all_features, dim=0)
 
     sim = cosine_similarity_matrix(features)
-    np.save("categories_hebbian_deep_encode_similarity.npy", sim)
+    np.save("pokemon_hebbian_deep_encode_similarity.npy", sim)
     plt.figure(figsize=(8, 8))
     plt.imshow(sim, cmap="magma")
     plt.title("Hebbian Deep Cosine Similarity")
     plt.colorbar()
     plt.tight_layout()
-    plt.savefig("categories_hebbian_deep_encode_similarity.png")
-    print("[SAVED] categories_hebbian_deep_encode_similarity.png")
+    plt.savefig("pokemon_hebbian_deep_encode_similarity.png")
+    print("[SAVED] pokemon_hebbian_deep_encode_similarity.png")
 
     step = len(sprites) // ROWS
     refs = [i * step for i in range(ROWS)]

@@ -2,27 +2,24 @@ import sys
 import os
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 from torchvision import transforms
+from torchvision.datasets import ImageFolder
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.cluster import KMeans
 from umap import UMAP
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from load_spritesheet import load_spritesheet
-
 # === Config ===
-SPRITE_PATH = "../data/pokemon_all.png"
+IMAGE_DIR = "../data/tiny_imagenet/train"
 SPRITE_SIZE = (64, 64)
-TILE_SIZE = (96, 96)
-NUM_SPRITES = 30 * 30 - 2
 BATCH_SIZE = 8
-NUM_IMAGES = 30 * 30 - 2
+NUM_IMAGES = 1000
 EPOCHS = 50
 CLUSTERS = 4
-EMBED_SIZE = 32  # thumbnail size on plot
+EMBED_SIZE = 32  # thumbnail size
+CANVAS_SIZE = 2500
 
 # === Hebbian Network ===
 class HebbianEncoder(torch.nn.Module):
@@ -67,14 +64,20 @@ class MultiLayerHebbian(torch.nn.Module):
             x = layer(x, step=step if i == len(self.layers) - 1 else None)
         return x.view(x.size(0), -1).detach()
 
-# === Load Sprites ===
-def load_pokemon():
-    sprites = load_spritesheet(SPRITE_PATH, sprite_size=SPRITE_SIZE, tile_size=TILE_SIZE, max_sprites=NUM_SPRITES)[:, :3, :, :]
-    return sprites[:NUM_IMAGES]
+# === Load Dataset ===
+def load_dataset():
+    transform = transforms.Compose([
+        transforms.Resize(SPRITE_SIZE),
+        transforms.ToTensor()
+    ])
+    dataset = ImageFolder(IMAGE_DIR, transform=transform)
+    subset = torch.utils.data.Subset(dataset, list(range(min(NUM_IMAGES, len(dataset)))))
+    loader = DataLoader(subset, batch_size=BATCH_SIZE, shuffle=False)
+    return subset, loader
 
-# === Image Plotting Utility ===
-def plot_with_images(embeddings, images, title="Hebbian Clusters", size=EMBED_SIZE):
-    fig, ax = plt.subplots(figsize=(10, 10), facecolor='black', dpi=100)
+# === Plot Utility ===
+def plot_with_images(embeddings, images, title="Hebbian Clusters", size=32, canvas_size=2500):
+    fig, ax = plt.subplots(figsize=(canvas_size / 100, canvas_size / 100), facecolor='black', dpi=100)
     ax.set_facecolor('black')
     ax.set_title(title, color='white')
     ax.set_xticks([])
@@ -82,27 +85,29 @@ def plot_with_images(embeddings, images, title="Hebbian Clusters", size=EMBED_SI
 
     from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
+    # Normalize coordinates to canvas
+    margin = size * 2
+    embeddings -= embeddings.min(axis=0)
+    embeddings /= (embeddings.max(axis=0) + 1e-8)
+    embeddings *= (canvas_size - 2 * margin)
+    embeddings += margin
+
     for (x, y), img_tensor in zip(embeddings, images):
-        img = transforms.ToPILImage()(img_tensor).resize((size, size), resample=Image.BILINEAR).convert("RGBA")
-        alpha_mask = 255 - (np.all(np.array(img)[..., :3] == 0, axis=-1).astype(np.uint8) * 255)
-        img.putalpha(Image.fromarray(alpha_mask))
-        imbox = OffsetImage(img, zoom=1.5)
+        img = transforms.ToPILImage()(img_tensor).resize((size, size), resample=Image.BILINEAR).convert("RGB")
+        imbox = OffsetImage(img, zoom=1.5)  # zoom factor for visibility
         ab = AnnotationBbox(imbox, (x, y), frameon=False)
         ax.add_artist(ab)
 
-    ax.set_xlim(0, 1000)
-    ax.set_ylim(0, 1000)
+    ax.set_xlim(0, canvas_size)
+    ax.set_ylim(0, canvas_size)
     ax.invert_yaxis()
     plt.tight_layout()
-    plt.savefig("pokemon_hebbian_cluster_plot.png", facecolor='black')
-    print("[SAVED] pokemon_hebbian_cluster_plot.png")
+    plt.savefig("tinyimagenet_hebbian_cluster_plot.png", facecolor='black')
+    print("[SAVED] tinyimagenet_hebbian_cluster_plot.png")
 
 # === Main ===
 if __name__ == "__main__":
-    sprites = load_pokemon()
-    dataset = TensorDataset(sprites)
-    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False)
-
+    dataset, dataloader = load_dataset()
     model = MultiLayerHebbian([
         (3, 16, (32, 32)),
         (16, 32, (16, 16)),
@@ -112,7 +117,7 @@ if __name__ == "__main__":
 
     all_features = []
     for epoch in range(EPOCHS):
-        for step, (batch,) in enumerate(dataloader):
+        for step, (batch, _) in enumerate(dataloader):
             z = model(batch, step=step) if epoch == EPOCHS - 1 else model(batch)
             if epoch == EPOCHS - 1:
                 all_features.append(z)
@@ -120,23 +125,15 @@ if __name__ == "__main__":
     features = torch.cat(all_features, dim=0).cpu().numpy()
     features = np.nan_to_num(features)
     features /= (np.linalg.norm(features, axis=1, keepdims=True) + 1e-6)
-    print("Feature stats:", features.min(), features.max(), np.isnan(features).any())
 
-    # === KMeans Clustering ===
-    kmeans = KMeans(n_clusters=CLUSTERS, random_state=42).fit(features)
-    labels = kmeans.labels_
-
-    # === UMAP or PCA for 2D Embedding ===
-    reducer = UMAP(n_components=2, random_state=42)
+    reducer = UMAP(n_components=2, random_state=42) #, min_dist=0.2)
     reduced = reducer.fit_transform(features)
 
-    canvas_size = 1000
     margin = EMBED_SIZE // 2
-
     reduced -= reduced.min(axis=0)
     reduced /= (reduced.max(axis=0) + 1e-8)
-    reduced *= (canvas_size - 2 * margin)
+    reduced *= (CANVAS_SIZE - 2 * margin)
     reduced += margin
 
-    # plot
-    plot_with_images(reduced, sprites, size=EMBED_SIZE)
+    all_images = [img for img, _ in dataset]
+    plot_with_images(reduced, all_images)

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # === Config ===
-IMAGE_DIR = "data/tiny_imagenet/train"
+IMAGE_DIR = "../data/tiny_imagenet/train"
 SPRITE_SIZE = (64, 64)
 BATCH_SIZE = 8
 NUM_IMAGES = 1000

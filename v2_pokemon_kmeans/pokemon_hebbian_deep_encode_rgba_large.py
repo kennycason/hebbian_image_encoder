@@ -14,15 +14,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from load_spritesheet import load_spritesheet
 
 # === Config ===
-SPRITE_PATH = "../data/pokemon_all.png"
-SPRITE_SIZE = (64, 64)
+SPRITE_PATH = "../data/pokemon_all_transparent.png"
+SPRITE_SIZE = (96, 96)
 TILE_SIZE = (96, 96)
-NUM_SPRITES = 30 * 30 - 2
+NUM_SPRITES = 898
 BATCH_SIZE = 8
-NUM_IMAGES = 30 * 30 - 2
+NUM_IMAGES = 898
 EPOCHS = 50
-CLUSTERS = 4
-EMBED_SIZE = 32  # thumbnail size on plot
+CLUSTERS = 7
+EMBED_SIZE = 96  # full resolution
+CANVAS_SIZE = 1000
 
 # === Hebbian Network ===
 class HebbianEncoder(torch.nn.Module):
@@ -69,12 +70,12 @@ class MultiLayerHebbian(torch.nn.Module):
 
 # === Load Sprites ===
 def load_pokemon():
-    sprites = load_spritesheet(SPRITE_PATH, sprite_size=SPRITE_SIZE, tile_size=TILE_SIZE, max_sprites=NUM_SPRITES)[:, :3, :, :]
+    sprites = load_spritesheet(SPRITE_PATH, sprite_size=SPRITE_SIZE, tile_size=TILE_SIZE, max_sprites=NUM_SPRITES)
     return sprites[:NUM_IMAGES]
 
 # === Image Plotting Utility ===
 def plot_with_images(embeddings, images, title="Hebbian Clusters", size=EMBED_SIZE):
-    fig, ax = plt.subplots(figsize=(10, 10), facecolor='black', dpi=100)
+    fig, ax = plt.subplots(figsize=(25, 25), facecolor='black', dpi=100)
     ax.set_facecolor('black')
     ax.set_title(title, color='white')
     ax.set_xticks([])
@@ -83,19 +84,17 @@ def plot_with_images(embeddings, images, title="Hebbian Clusters", size=EMBED_SI
     from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
     for (x, y), img_tensor in zip(embeddings, images):
-        img = transforms.ToPILImage()(img_tensor).resize((size, size), resample=Image.BILINEAR).convert("RGBA")
-        alpha_mask = 255 - (np.all(np.array(img)[..., :3] == 0, axis=-1).astype(np.uint8) * 255)
-        img.putalpha(Image.fromarray(alpha_mask))
-        imbox = OffsetImage(img, zoom=1.5)
+        img = transforms.ToPILImage()(img_tensor).resize((size, size), resample=Image.BILINEAR)
+        imbox = OffsetImage(img, zoom=1)
         ab = AnnotationBbox(imbox, (x, y), frameon=False)
         ax.add_artist(ab)
 
-    ax.set_xlim(0, 1000)
-    ax.set_ylim(0, 1000)
+    ax.set_xlim(0, CANVAS_SIZE)
+    ax.set_ylim(0, CANVAS_SIZE)
     ax.invert_yaxis()
     plt.tight_layout()
-    plt.savefig("pokemon_hebbian_cluster_plot.png", facecolor='black')
-    print("[SAVED] pokemon_hebbian_cluster_plot.png")
+    plt.savefig("pokemon_hebbian_rgba_large_cluster_plot.png", facecolor='black')
+    print("[SAVED] pokemon_hebbian_rgba_large_cluster_plot.png")
 
 # === Main ===
 if __name__ == "__main__":
@@ -104,10 +103,10 @@ if __name__ == "__main__":
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     model = MultiLayerHebbian([
-        (3, 16, (32, 32)),
-        (16, 32, (16, 16)),
-        (32, 64, (8, 8)),
-        (64, 128, (4, 4))
+        (4, 16, (48, 48)),
+        (16, 32, (24, 24)),
+        (32, 64, (12, 12)),
+        (64, 128, (6, 6))
     ])
 
     all_features = []
@@ -122,21 +121,14 @@ if __name__ == "__main__":
     features /= (np.linalg.norm(features, axis=1, keepdims=True) + 1e-6)
     print("Feature stats:", features.min(), features.max(), np.isnan(features).any())
 
-    # === KMeans Clustering ===
     kmeans = KMeans(n_clusters=CLUSTERS, random_state=42).fit(features)
-    labels = kmeans.labels_
-
-    # === UMAP or PCA for 2D Embedding ===
     reducer = UMAP(n_components=2, random_state=42)
     reduced = reducer.fit_transform(features)
 
-    canvas_size = 1000
     margin = EMBED_SIZE // 2
-
     reduced -= reduced.min(axis=0)
     reduced /= (reduced.max(axis=0) + 1e-8)
-    reduced *= (canvas_size - 2 * margin)
+    reduced *= (CANVAS_SIZE - 2 * margin)
     reduced += margin
 
-    # plot
     plot_with_images(reduced, sprites, size=EMBED_SIZE)

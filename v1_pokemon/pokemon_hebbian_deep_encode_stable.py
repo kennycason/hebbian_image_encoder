@@ -8,7 +8,7 @@ from load_spritesheet import load_spritesheet
 from torchvision import transforms
 
 # === Config ===
-SPRITE_PATH = "data/pokemon_all.png"
+SPRITE_PATH = "../data/pokemon_all.png"
 SPRITE_SIZE = (64, 64)
 TILE_SIZE = (96, 96)
 NUM_SPRITES = 151
@@ -16,7 +16,7 @@ BATCH_SIZE = 8
 NUM_IMAGES = 100
 ROWS = 10
 GRID_K = 5
-EPOCHS = 100
+EPOCHS = 500
 
 # === Hebbian Encoder Layer ===
 class HebbianEncoder(torch.nn.Module):
@@ -107,9 +107,11 @@ if __name__ == "__main__":
     all_features = []
     for epoch in range(EPOCHS):
         for step, (batch,) in enumerate(dataloader):
-            z = model(batch, step=step)
             if epoch == EPOCHS - 1:
-                all_features.append(z.detach())
+                z = model(batch, step=step)
+                all_features.append(z)
+            else:
+                model(batch)
 
     features = torch.cat(all_features, dim=0)
 
