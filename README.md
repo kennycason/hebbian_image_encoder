@@ -142,6 +142,8 @@ A few variations:
 
 The first column contains randomly selected Pokémon, and then the most-similar 5 Pokémon are listed to the right.
 
+<a href="/v2_pokemon/pokemon_hebbian_deep_encode.py" target="_blank">/v1/hebbian_encode.py</a>
+
 <img src="/v2_pokemon/pokemon_hebbian_deep_encode_neighbors_grid.png" width="100%" />
 
 
