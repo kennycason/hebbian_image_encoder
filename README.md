@@ -53,7 +53,7 @@ delta = 0.001 * hebbian.mean(dim=0)
 self.lateral_weights.data += delta.clamp(-1.0, 1.0)
 ```
 
-### Energy, Delta, Norm Logging
+## Energy, Delta, Norm Logging
 
 During training, the following values are logged per step:
 
@@ -77,6 +77,59 @@ Images are passed through a multi-layer encoder consisting of 4 HebbianEncoder l
 features = model(images)
 features = F.normalize(features, dim=1).cpu().numpy()
 ```
+
+## Hebbian Network Structure
+
+The Hebbian encoder processes 96×96 RGBA Pokémon sprites using a stack of convolutional layers with stride 2. Each layer halves the spatial resolution while increasing the channel count. Each Hebbian layer also includes lateral recurrent weights trained with Hebbian updates to reinforce co-activation patterns.
+
+```python
+model = MultiLayerHebbian([
+    (4, 16, (48, 48)),
+    (16, 32, (24, 24)),
+    (32, 64, (12, 12)),
+    (64, 128, (6, 6))
+])
+```
+
+Each tuple in the list specifies the parameters for a `HebbianEncoder` layer:
+
+```python
+(in_channels, out_channels, spatial_shape)
+```
+
+This configuration maps as follows:
+
+| Layer | Input Channels | Output Channels | Input Spatial Size | Output Spatial Size |
+| ----- | -------------- | --------------- | ------------------ | ------------------- |
+| 1     | 4 (RGBA)       | 16              | 96×96              | 48×48               |
+| 2     | 16             | 32              | 48×48              | 24×24               |
+| 3     | 32             | 64              | 24×24              | 12×12               |
+| 4     | 64             | 128             | 12×12              | 6×6                 |
+
+This structure results in a final feature tensor of shape `(B, 128, 6, 6)` per image, which is flattened to `(B, 4608)` and used for clustering and visualization.
+
+The `spatial` argument in each `HebbianEncoder` is required to initialize the lateral weight matrix:
+
+```python
+self.lateral_weights = torch.nn.Parameter(torch.zeros(C, N, N))
+```
+
+where `N = H × W` (the number of spatial positions per channel). These weights are updated using Hebbian learning:
+
+```math
+\Delta W_{ij} = \eta \cdot \langle a_i \cdot a_j \rangle
+```
+
+which in code becomes:
+
+```python
+hebbian = torch.einsum("bni,bnj->nij", act_flat, act_flat)
+delta = 0.001 * hebbian.mean(dim=0)
+self.lateral_weights.data += delta
+```
+
+This configuration balances spatial compression and representational capacity, while the Hebbian lateral updates encourage neurons to specialize by detecting and reinforcing co-activation patterns.
+
 
 ## Embedding and Clustering Visualization
 
