@@ -135,7 +135,7 @@ for (x, y), img in zip(reduced, sprites):
 
 <img src="/v2_pokemon_kmeans/pokemon_hebbian_rgba_cluster_plot_v1.png" width="100%" />
 
-<img src="/v2_pokemon_kmeans/pokemon_hebbian_rgba_large_cluster_plot_v1.png" width="100%" />
+<img src="/v2_pokemon_kmeans/pokemon_hebbian_rgba_large_cluster_plot.png" width="100%" />
 
 
 ### Pokémon Similarity
