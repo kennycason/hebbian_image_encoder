@@ -1,4 +1,4 @@
-# Hebbian Deep Encoding for Image Clustering
+# Deep Hebbian Image Encoder
 
 This project is exploring new Hebbian methods to train stackable image encoders. Afterward, the learned image embeddings are visualized using UMAP + K-Means Clustering.
 
