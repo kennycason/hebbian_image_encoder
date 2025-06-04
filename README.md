@@ -112,17 +112,44 @@ for (x, y), img in zip(reduced, sprites):
     canvas.paste(pil, (int(x), int(y)), mask=pil if has_alpha else None)
 ```
 
-## Results
+## Code + Results
 
-Tiny ImageNet (Hebbian):
+### Tiny ImageNet (Hebbian)
+
+<a href="/v2_imagenet_kmeans/imagenet_hebbian_deep_encode.py" target="_blank">/v1/hebbian_encode.py</a>
 
 <img src="/v2_imagenet_kmeans/tinyimagenet_hebbian_cluster_plot.png" width="100%" />
 
-Pokémon Full RGBA Hebbian:
+<img src="/v2_imagenet_kmeans/tinyimagenet_hebbian_cluster_plot_v2.png" width="100%" />
 
-<img src="/v2_pokemon_kmeans/pokemon_hebbian_rgba_large_cluster_plot.png" width="100%" />
+<img src="/v2_imagenet_kmeans/tinyimagenet_hebbian_cluster_plot_v1.png" width="100%" />
 
-Pokémon Similarity:
+
+### Pokémon Full RGBA Hebbian
+
+<a href="/v2_pokemon_kmeans/pokemon_hebbian_deep_encode_rgba_large.py" target="_blank">/v1/hebbian_encode.py</a>
+
+A few variations:
+
+<img src="/v2_pokemon_kmeans/pokemon_hebbian_cluster_plot_898.png" width="100%" />
+
+<img src="/v2_pokemon_kmeans/pokemon_hebbian_rgba_cluster_plot_v1.png" width="100%" />
+
+<img src="/v2_pokemon_kmeans/pokemon_hebbian_rgba_large_cluster_plot_v1.png" width="100%" />
+
+
+### Pokémon Similarity
+
+The first column contains randomly selected Pokémon, and then the most-similar 5 Pokémon are listed to the right.
 
 <img src="/v2_pokemon/pokemon_hebbian_deep_encode_neighbors_grid.png" width="100%" />
+
+
+### Hebbian Image Encoder (Single-Layer)
+
+This was the first prototype. The first column contains randomly selected image (from Tiny Imagenet), and then the most-similar 5 images are listed to the right.
+
+<a href="/v1/hebbian_encode.py" target="_blank">/v1/hebbian_encode.py</a>
+
+<img src="/v1/hebbian_encode_neighbors_grid.png" width="66%" />
 
