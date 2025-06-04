@@ -129,8 +129,6 @@ for (x, y), img in zip(reduced, sprites):
 
 <a href="/v2_pokemon_kmeans/pokemon_hebbian_deep_encode_rgba_large.py" target="_blank">Source</a>
 
-A few variations:
-
 <img src="/v2_pokemon_kmeans/pokemon_hebbian_cluster_plot_898.png" width="100%" />
 
 <img src="/v2_pokemon_kmeans/pokemon_hebbian_rgba_cluster_plot_v1.png" width="100%" />
