@@ -1,12 +1,24 @@
 # Deep Hebbian Image Encoder
 
-This project is exploring new Hebbian methods to train stackable image encoders. Afterward, the learned image embeddings are visualized using UMAP + K-Means Clustering.
+This project explores biologically-inspired Hebbian methods to train stackable image encoders.
+These models can organize visual information without traditional loss functions or backpropagation. 
+Afterward, the learned image embeddings are visualized using UMAP + K-Means Clustering.
 
 Below is a sample clustering of learned image embeddings from the <a href="https://huggingface.co/datasets/zh-plus/tiny-imagenet" target="_blank">Tiny ImageNet</a> dataset.
 
 <img src="/v2_imagenet_kmeans/tinyimagenet_hebbian_cluster_plot.png" width="100%" />
 
 <a href="https://github.com/kennycason/hebbian_image_encoder" target="_blank">Source on GitHub</a>
+
+## Why Hebbian? (Biological Analogy)
+
+Unlike traditional neural networks that rely on error signals and gradient descent, Hebbian models operate more like biological brains. There’s no supervision, no target output, no error propagation. Just forward input, and strengthening connections between neurons that activate together.
+
+> “Neurons that fire together, wire together.”
+
+This means the network doesn’t know what the correct answer is, it just recognizes and reinforces co-occurrence in the data. If two features appear frequently at the same time, their connection strengthens. Over time, this results in internal representations that reflect the structure of the data, without needing labels or supervision.
+
+This approach mirrors parts of the brain’s learning strategy, where connections are locally updated based on experience, rather than global goals. It’s simpler, and more biologically plausible, and that simplicity might be useful for efficient or modular systems in the future.
 
 ## Dataset Preparation
 
@@ -80,7 +92,9 @@ features = F.normalize(features, dim=1).cpu().numpy()
 
 ## Hebbian Network Structure
 
-The Hebbian encoder processes 96×96 RGBA Pokémon sprites using a stack of convolutional layers with stride 2. Each layer halves the spatial resolution while increasing the channel count. Each Hebbian layer also includes lateral recurrent weights trained with Hebbian updates to reinforce co-activation patterns.
+The Hebbian encoder processes 96×96 RGBA Pokémon sprites using a stack of convolutional layers with stride 2. 
+Each layer halves the spatial resolution while increasing the channel count. 
+Each Hebbian layer also includes lateral recurrent weights trained with Hebbian updates to reinforce co-activation patterns.
 
 ```python
 model = MultiLayerHebbian([
