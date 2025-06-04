@@ -6,6 +6,8 @@ Below is a sample clustering of learned image embeddings from the <a href="https
 
 <img src="/v2_imagenet_kmeans/tinyimagenet_hebbian_cluster_plot.png" width="100%" />
 
+<a href="https://github.com/kennycason/hebbian_image_encoder" target="_blank">Source on GitHub</a>
+
 ## Dataset Preparation
 
 Images were extracted from either a sprite sheet or folder (e.g., Tiny ImageNet). For the Pokémon dataset, we used a 30x30 grid (898 total) from a transparent PNG.
@@ -152,4 +154,3 @@ This was the first prototype. The first column contains randomly selected image 
 <a href="/v1/hebbian_encode.py" target="_blank">Source</a>
 
 <img src="/v1/hebbian_encode_neighbors_grid.png" width="66%" />
-
