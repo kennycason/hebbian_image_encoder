@@ -1,0 +1,16 @@
+(.venv) ➜  v2_pokemon git:(main) ✗ python pokemon_hebbian_deep_encode.py                                                                                                                                  <aws:kenny> <region:us-west-2>
+[LOG] Step 0: energy=4548536.0000, delta=125.847275, norm=181.0193
+[LOG] Step 1: energy=4361343.0000, delta=120.668571, norm=181.0193
+[LOG] Step 2: energy=6304738.0000, delta=174.440231, norm=181.0193
+[LOG] Step 3: energy=6364242.0000, delta=176.086411, norm=181.0193
+[LOG] Step 4: energy=12408722.0000, delta=343.329956, norm=181.0193
+[LOG] Step 5: energy=8344065.0000, delta=230.865875, norm=181.0193
+[LOG] Step 6: energy=10473548.0000, delta=289.785034, norm=181.0193
+[LOG] Step 7: energy=13283822.0000, delta=367.541290, norm=181.0193
+[LOG] Step 8: energy=12655576.0000, delta=350.157501, norm=181.0193
+[LOG] Step 9: energy=17962748.0000, delta=497.000336, norm=181.0193
+[LOG] Step 10: energy=18107782.0000, delta=501.012390, norm=181.0193
+[LOG] Step 11: energy=24309524.0000, delta=672.606995, norm=181.0193
+[LOG] Step 12: energy=20220182.0000, delta=279.728455, norm=181.0193
+[SAVED] pokemon_hebbian_deep_encode_similarity.png
+[SAVED] pokemon_hebbian_deep_encode_neighbors_grid.png
